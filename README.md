@@ -1,0 +1,1 @@
+The Video Hosting Backend System provides an API-driven backend service for uploading, managing, and streaming videos. It includes user authentication, secure storage, metadata handling, and streaming capabilities.
