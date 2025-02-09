@@ -9,4 +9,10 @@ import connect from './database/connect.js';
 // Debugging: Check if MONGODB_URL is loaded
 console.log("MONGODB_URL:", process.env.MONGODB_URL);
 
-connect();
+connect()
+.then(() => {
+    app.listen(process.env.PORT || 8000, () => {
+        console.log(`Server is running on port ${process.env.PORT || 8000}`);
+    });
+})
+.catch(error => console.error("Database connection error:", error));
