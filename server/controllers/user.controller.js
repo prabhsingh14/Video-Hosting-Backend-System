@@ -1,7 +1,7 @@
 import {asyncHandler} from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js";
 import {User} from "../models/user.model.js";
-import {uploadOnCloudinary} from "../utils/Cloudinary.js"
+import {uploadOnCloudinary, deleteImageFromStorage} from "../utils/Cloudinary.js"
 import {ApiResponse} from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -258,12 +258,21 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         if(!user){
             throw new ApiError(404, "User not found")
         }
-    
+        
+        const oldAvatar = user.avatar;
+        
         user.fullName = fullName
         user.email = email
         user.username = username
+
+        if(avatar) user.avatar = avatar;
+
         await user.save({ validateBeforeSave: false })
-    
+        
+        if(avatar && oldAvatar){
+            await deleteImageFromStorage(oldAvatar);
+        }
+
         return res.status(200).json(
             new ApiResponse(200, {}, "Account details updated successfully")
         )
@@ -334,6 +343,132 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
 })
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    try {
+        const {username} = req.params
+        if(!username){
+            throw new ApiError(400, "Username is required")
+        }
+
+        const channel = await User.aggregate([
+            {
+                $match: {
+                    username: username?.toLowerCase()
+                }
+            },
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "channel",
+                    as: "subscribers"
+                }
+            },
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "subscriber",
+                    as: "subscribedTo"
+                }
+            },
+            {
+                $addFields: {
+                    subscriberCount: { $size: "$subscribers" },
+                    subscribedToCount: { $size: "$subscribedTo" },
+                    isSubscribed: {
+                        $cond: {
+                            if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    email: 1,
+                    fullName: 1,
+                    username: 1,
+                    subscriberCount: 1,
+                    subscribedToCount: 1,
+                    isSubscribed: 1,
+                    avatar: 1,
+                    coverImage: 1,
+                }
+            }
+        ])
+
+        if(!channel?.length){
+            throw new ApiError(404, "Channel not found")
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, channel[0], "Channel fetched successfully")
+        )
+    } catch (error) {
+        throw new ApiError(500, "Error fetching channel")
+    }
+
+})
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    try {
+        const user = await User.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(req.user._id) // req.user._id -> it returns a string, so we need to convert it to ObjectId
+                }
+            },
+            {
+                $lookup: {
+                    from: "videos",
+                    localField: "watchHistory",
+                    foreignField: "_id",
+                    as: "watchHistory",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "owner",
+
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullName: 1,
+                                            username: 1,
+                                            avatar: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            $addFields: {
+                                owner: { 
+                                    $first: "$owner"
+                                }
+                            }
+                        },
+                    ]
+                }
+            }
+        ])
+
+        if(!user?.length){
+            throw new ApiError(404, "User not found")
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully")
+        )
+    } catch (error) {
+        throw new ApiError(500, "Error fetching watch history")
+    }
+})
+
 export { 
     registerUser,
     loginUser,
@@ -343,5 +478,7 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile,
+    getWatchHistory
 }
