@@ -1,6 +1,6 @@
 # Video Hosting Backend System
 
-A **scalable** and **secure** backend system for video hosting and streaming, enabling seamless upload, storage, and playback of videos. Designed to handle **high traffic** and ensure a smooth user experience.
+A **scalable**, **secure**, **with AI** backend system for video hosting and streaming, enabling seamless upload, storage, playback of videos with automated transcript generation using OpenAI Whisper API . Designed to handle **high traffic** and ensure a smooth user experience.
 
 ## 🚀 Features
 
@@ -12,6 +12,11 @@ A **scalable** and **secure** backend system for video hosting and streaming, en
 - Upload, publish, update, and delete videos
 - Fetch all videos with optimized queries
 - Scalable storage & streaming with **Cloudinary & Multer**
+
+### 📝 AI-Powered Transcript Generation
+- Submit a video URL to auto-generate a transcript using **OpenAI Whisper**
+- Transcripts stored in MongoDB, accessible via secure endpoints
+- Enhances accessibility, SEO, and future subtitle integrations
 
 ### 📜 Watch History
 - Efficient tracking and retrieval of user watch history
@@ -71,6 +76,7 @@ JWT_SECRET=your_jwt_secret
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 Run the development server:
